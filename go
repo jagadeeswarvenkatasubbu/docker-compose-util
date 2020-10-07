@@ -12,13 +12,13 @@ target_up-force() {
   docker-compose up -d --build --force-recreate
 }
 
-target_kill() {
+target_down() {
   echo "Stopping the systems required for $1"
   cd $1
   docker-compose kill
 }
 
-target_down() {
+target_remove() {
   echo "Stopping and removing the systems required for $1"
   cd $1
   docker-compose down
@@ -37,11 +37,11 @@ else
   echo "usage: $0 <target>
 
 target:
-    up <servicename>                 --  Starts the systems with which the service integrates
-    up-force <servicename>           --  Rebuild the systems with which the service integrates
-    kill <servicename>               --  Kill the systems with which the service integrates
-    down <servicename>               --  Stops the systems with which the service integrates
-    ps <servicename>                 --  Lists the status of the systems with which the service integrates
+    up <servicename>                 --  Starts all the containers of a compose
+    up-force <servicename>           --  Force starts/restarts all the containers of a compose
+    down <servicename>               --  Stops all the containers of a compose
+    remove <servicename>             --  Stops and removes all the containers of a compose
+    ps <servicename>                 --  Lists the status of all the containers of a compose
 "
   exit 1
 fi

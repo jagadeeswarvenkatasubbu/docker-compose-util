@@ -1,12 +1,3 @@
-### Getting Started
-
-```
-./go composeUp             --  Starts the systems with which the service integrates
-./go composeKill           --  Stops the systems with which the service integrates
-./go composeRemove         --  Stops and removes the systems with which the service integrates
-./go composePS             --  Lists the status of the systems with which the service integrates
-```
-
 ### Services included
 
 | Services | HOST |
