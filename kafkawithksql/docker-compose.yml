@@ -2,7 +2,7 @@
 version: '2'
 services:
   zookeeper:
-    image: confluentinc/cp-zookeeper:5.4.0
+    image: confluentinc/cp-zookeeper:6.0.1
     hostname: zookeeper
     container_name: zookeeper
     ports:
@@ -12,7 +12,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
 
   broker:
-    image: confluentinc/cp-server:5.4.0
+    image: confluentinc/cp-server:6.0.1
     hostname: broker
     container_name: broker
     depends_on:
@@ -26,6 +26,8 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
       CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker:29092
@@ -35,7 +37,7 @@ services:
       CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
 
   schema-registry:
-    image: confluentinc/cp-schema-registry:5.4.0
+    image: confluentinc/cp-schema-registry:6.0.1
     hostname: schema-registry
     container_name: schema-registry
     depends_on:
@@ -48,6 +50,40 @@ services:
       SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: 'zookeeper:2181'
       SCHEMA_REGISTRY_LISTENERS: 'http://0.0.0.0:8081'
 
+  ksql-server:
+    image: confluentinc/cp-ksqldb-server:6.0.1
+    hostname: ksql-server
+    container_name: ksql-server
+    depends_on:
+      - zookeeper
+      - broker
+    ports:
+      - "8088:8088"
+    environment:
+      KSQL_BOOTSTRAP_SERVERS: 'broker:29092'
+      KSQL_LISTENERS: http://0.0.0.0:8088
+      KSQL_KSQL_SERVICE_ID: ksql_service
+      KSQL_KSQL_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      KSQL_KSQL_CONNECT_URL: http://connect:8083
+
+  ksql-cli:
+    image: confluentinc/cp-ksqldb-cli:6.0.1
+    depends_on:
+      - ksql-server
+    entrypoint: /bin/sh
+    tty: true
+
+  mysql:
+    build: ./mysql
+    container_name: dev_mysql
+    ports:
+      - "4306:3306"
+    environment:
+      MYSQL_USER: user
+      MYSQL_PASSWORD: user
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: default_schema
+
   connect:
     build: ./connect
     hostname: connect
@@ -56,7 +92,7 @@ services:
       - zookeeper
       - broker
       - schema-registry
-      - s3
+      - mysql
     ports:
       - "8083:8083"
     environment:
@@ -84,11 +120,33 @@ services:
       CONNECT_CONSUMER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
       CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
       CONNECT_LOG4J_LOGGERS: org.apache.zookeeper=ERROR,org.I0Itec.zkclient=ERROR,org.reflections=ERROR
-      AWS_ACCESS_KEY_ID: "asd"
-      AWS_SECRET_ACCESS_KEY: "asd"
 
+#  schema-registry-ui:
+#    image: landoop/schema-registry-ui
+#    container_name: schema_registry_ui
+#    links:
+#      - schema-registry
+#    environment:
+#      PROXY: 'true'
+#      SCHEMAREGISTRY_URL: 'schema-registry:8081'
+#    restart: always
+#    ports:
+#      - 3002:8000
+#
+#  kafka-connect-ui:
+#    image: landoop/kafka-connect-ui
+#    container_name: kafka_connect_ui
+#    links:
+#      - connect
+#    environment:
+#      PROXY: 'true'
+#      CONNECT_URL: 'connect:8083'
+#    restart: always
+#    ports:
+#      - 3001:8000
+#
   control-center:
-    image: confluentinc/cp-enterprise-control-center:5.4.0
+    image: confluentinc/cp-enterprise-control-center:6.0.1
     hostname: control-center
     container_name: control-center
     depends_on:
@@ -110,11 +168,3 @@ services:
       CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
       CONFLUENT_METRICS_TOPIC_REPLICATION: 1
       PORT: 9021
-
-  s3:
-    image: adobe/s3mock
-    hostname: s3
-    container_name: s3
-    ports:
-      - "9090:9090"
-      - "9191:9191"
